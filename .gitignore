@@ -1,0 +1,18 @@
+docker-compose.yml
+Dockerfile
+php.ini
+
+# katalog na uploady
+uploads/
+
+# pliki tymczasowe
+*.log
+*.tmp
+
+# docker
+*.pid
+*.sock
+
+# composer / node
+vendor/
+node_modules/
