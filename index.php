@@ -54,8 +54,13 @@ function showNext() {
 }
 
 function nextSlide() {
-    index = (index + 1) % media.length;
-    showNext();
+    index++;
+    if (index >= media.length) {
+        // pełny cykl -> odświeżenie strony
+        location.reload();
+    } else {
+        showNext();
+    }
 }
 
 showNext();
