@@ -5,10 +5,9 @@ uploads/
 *.log
 *.tmp
 
-# composer & node
-/vendor/
-/node_modules/
+php.ini
 
 # docker 
 docker-compose.yml
 Dockerfile
+
