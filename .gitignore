@@ -1,18 +1,14 @@
-docker-compose.yml
-Dockerfile
-php.ini
-
-# katalog na uploady
+# katalogi do uploadów (dynamiczne pliki)
 uploads/
 
-# pliki tymczasowe
+# logi, cache
 *.log
 *.tmp
 
-# docker
-*.pid
-*.sock
+# composer & node
+/vendor/
+/node_modules/
 
-# composer / node
-vendor/
-node_modules/
+# docker 
+docker-compose.yml
+Dockerfile
