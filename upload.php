@@ -1,3 +1,9 @@
+<!-- 
+Panel zarządzania reklamami i ogłoszeniami 
+https://github.com/witchnick/Super-simple-kiosk-solution
+
+14.09.2025
+-->
 <?php
 require_once __DIR__ . '/config.php';
 session_start();
