@@ -1,84 +1,171 @@
 <?php
-// --- KONFIGURACJA ---
-$USERNAME = "admin";       // login do panelu
-$PASSWORD = "tajnehaslo";  // zmień na własne, mocne hasło
-$uploadDir = __DIR__ . "/uploads/";
+require_once __DIR__ . '/config.php';
+session_start();
 
-// --- PROSTA AUTORYZACJA ---
-if (!isset($_SERVER['PHP_AUTH_USER']) || !isset($_SERVER['PHP_AUTH_PW'])
-    || $_SERVER['PHP_AUTH_USER'] !== $USERNAME
-    || $_SERVER['PHP_AUTH_PW'] !== $PASSWORD) {
-    
-    header('WWW-Authenticate: Basic realm="Panel Upload"');
-    header('HTTP/1.0 401 Unauthorized');
-    echo 'Brak dostępu';
+$uploadDir = __DIR__ . '/uploads/';
+$msg = "";
+
+// Ścieżka do logo
+$logoPath = __DIR__ . '/logo.jpg';
+$logoUrl  = file_exists($logoPath) ? 'logo.jpg' : null;
+
+// Wylogowanie
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header("Location: upload.php");
     exit;
 }
 
-// --- OBSŁUGA UPLOADU ---
-$msg = "";
+// Logowanie
+if (!isset($_SESSION['authenticated'])) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
+        if ($_POST['password'] === $UPLOAD_PASSWORD) {
+            $_SESSION['authenticated'] = true;
+            header("Location: upload.php");
+            exit;
+        } else {
+            $msg = "❌ Nieprawidłowe hasło!";
+        }
+    }
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title><?php echo htmlspecialchars($PANEL_TITLE); ?></title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 flex items-center justify-center h-screen">
+        <div class="bg-white shadow-lg rounded-xl p-8 w-96">
+            <?php if ($logoUrl): ?>
+                <div class="flex justify-center mb-6">
+                    <img src="<?php echo $logoUrl; ?>" alt="Logo" class="w-full object-contain">
+                </div>
+            <?php endif; ?>
+
+            <h1 class="text-3xl font-bold mb-6 text-center">
+                <?php echo htmlspecialchars($PANEL_TITLE); ?>
+            </h1>
+
+            <?php if (!empty($msg)) echo "<p class='text-red-600 mb-3'>$msg</p>"; ?>
+            <form method="post" class="space-y-4">
+                <div>
+                    <label class="block mb-1 font-medium">Hasło:</label>
+                    <input type="password" name="password" required class="w-full border rounded p-2 focus:outline-none focus:ring focus:border-blue-300">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Zaloguj</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// ======================
+// Użytkownik zalogowany
+// ======================
+
+// Upload pliku
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
-    $target = $uploadDir . basename($_FILES['file']['name']);
-    if (move_uploaded_file($_FILES['file']['tmp_name'], $target)) {
-        $msg = "Plik przesłany!";
+    $filename = basename($_FILES['file']['name']);
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+    if ($_FILES['file']['size'] > $MAX_FILE_SIZE) {
+        $msg = "❌ Plik jest za duży! Maksymalnie 30 MB.";
+    } elseif (!in_array($ext, $ALLOWED_EXT)) {
+        $msg = "❌ Niedozwolony typ pliku. Można wrzucać tylko: " . implode(", ", $ALLOWED_EXT);
     } else {
-        $msg = "Błąd podczas przesyłania pliku.";
+        $target = $uploadDir . $filename;
+        if (move_uploaded_file($_FILES['file']['tmp_name'], $target)) {
+            $msg = "✅ Plik został przesłany.";
+        } else {
+            $msg = "❌ Błąd podczas przesyłania pliku.";
+        }
     }
 }
 
-// --- OBSŁUGA USUWANIA ---
+// Usuwanie pliku
 if (isset($_GET['delete'])) {
     $file = basename($_GET['delete']);
-    $target = $uploadDir . $file;
-    if (is_file($target)) {
-        unlink($target);
-        $msg = "Plik $file usunięty.";
+    $path = $uploadDir . $file;
+    if (is_file($path)) {
+        unlink($path);
+        $_SESSION['msg'] = "✅ Plik usunięty.";
     }
+    header("Location: upload.php");
+    exit;
 }
 
-// --- POBRANIE LISTY PLIKÓW ---
-$files = glob($uploadDir . "*.{jpg,jpeg,png,gif,mp4,webm}", GLOB_BRACE);
+// Wiadomość z sesji
+if (isset($_SESSION['msg'])) {
+    $msg = $_SESSION['msg'];
+    unset($_SESSION['msg']);
+}
+
+// Lista plików
+$files = array_diff(scandir($uploadDir), ['.', '..']);
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>Panel zarządzania</title>
-<style>
-body { font-family:sans-serif; margin:20px; }
-.msg { color:green; margin-bottom:10px; }
-.file-list { margin-top:20px; }
-.file-item { margin:5px 0; }
-.thumb { max-width:150px; max-height:100px; display:inline-block; margin-right:10px; vertical-align:middle; }
-</style>
+    <meta charset="UTF-8">
+    <title><?php echo htmlspecialchars($PANEL_TITLE); ?></title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-<h1>Panel zarządzania</h1>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-5xl mx-auto py-10">
+        <div class="bg-white shadow-lg rounded-xl p-8">
+            <?php if ($logoUrl): ?>
+                <div class="flex justify-center mb-6">
+                    <img src="<?php echo $logoUrl; ?>" alt="Logo" class="w-full object-contain">
+                </div>
+            <?php endif; ?>
 
-<?php if (!empty($msg)) echo "<div class='msg'>$msg</div>"; ?>
+            <h1 class="text-3xl font-bold mb-6 text-center">
+                <?php echo htmlspecialchars($PANEL_TITLE); ?>
+            </h1>
 
-<h2>Dodaj plik</h2>
-<form method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required>
-    <button type="submit">Wyślij</button>
-</form>
+            <?php if (!empty($msg)) echo "<p class='mb-4 text-blue-700 font-medium'>$msg</p>"; ?>
 
-<h2>Aktualne pliki</h2>
-<div class="file-list">
-<?php foreach($files as $file): 
-    $name = basename($file);
-    $ext = pathinfo($file, PATHINFO_EXTENSION);
-?>
-    <div class="file-item">
-        <?php if (in_array(strtolower($ext), ['mp4','webm'])): ?>
-            🎬 <?php echo $name; ?>
-        <?php else: ?>
-            <img src="uploads/<?php echo $name; ?>" class="thumb"> <?php echo $name; ?>
-        <?php endif; ?>
-        [<a href="?delete=<?php echo urlencode($name); ?>" onclick="return confirm('Usunąć plik <?php echo $name; ?>?');">Usuń</a>]
+            <!-- Formularz uploadu -->
+            <form method="post" enctype="multipart/form-data" class="flex items-center space-x-4 mb-8">
+                <input type="file" name="file" required class="flex-1 border rounded p-2">
+                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Wyślij</button>
+            </form>
+
+            <!-- Lista plików -->
+            <h2 class="text-xl font-semibold mb-4">Pliki w katalogu:</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <?php foreach ($files as $file): 
+                    $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                    $url = "uploads/" . urlencode($file);
+                ?>
+                <div class="bg-gray-50 rounded-lg shadow p-3 flex flex-col items-center">
+                    <?php if (in_array($ext, ['jpg','jpeg','png','gif','webp'])): ?>
+                        <img src="<?php echo $url; ?>" class="max-h-32 object-contain mb-2">
+                    <?php elseif (in_array($ext, ['mp4','webm'])): ?>
+                        <video src="<?php echo $url; ?>" class="max-h-32 object-contain mb-2" preload="metadata" muted></video>
+                    <?php else: ?>
+                        <div class="w-32 h-20 bg-gray-300 flex items-center justify-center text-gray-700">?</div>
+                    <?php endif; ?>
+
+                    <div class="text-center text-sm break-words">
+                        <a href="<?php echo $url; ?>" target="_blank" class="text-blue-600 hover:underline"><?php echo htmlspecialchars($file); ?></a>
+                    </div>
+                    <a href="?delete=<?php echo urlencode($file); ?>" 
+                       onclick="return confirm('Usunąć plik?');"
+                       class="mt-2 inline-block bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm">
+                       Usuń
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="mt-6">
+                <a href="?logout=1" class="text-gray-600 hover:underline">Wyloguj</a>
+            </div>
+        </div>
     </div>
-<?php endforeach; ?>
-</div>
-
 </body>
 </html>
