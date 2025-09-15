@@ -5,6 +5,7 @@ uploads/
 
 php.ini
 config.php
+logo.jpg
 
 docker-compose.yml
 Dockerfile
